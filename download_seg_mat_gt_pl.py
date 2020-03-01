@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+
+from subprocess import call
+from os import path, makedirs
+import hashlib
+from tqdm import tqdm
+import configparser
+import requests
+
+BASE_URL = 'http://vision.imar.ro/human3.6m/filebrowser.php'
+
+subjects = [
+    ('S1', 1),
+    ('S5', 6),
+    ('S6', 7),
+    ('S7', 2),
+    ('S8', 3),
+    ('S9', 4),
+    ('S11', 5),
+]
+
+
+def md5(filename):
+    hash_md5 = hashlib.md5()
+    with open(filename, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b''):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
+def download_file(url, dest_file, phpsessid):
+    call(['axel',
+          '-a',
+          '-n', '24',
+          '-H', 'COOKIE: PHPSESSID=' + phpsessid,
+          '-o', dest_file,
+          url])
+
+def get_cookie(username,password):
+    cmd = 'rm cookies.txt checklogin.php'
+    ret = call(cmd, shell=True)
+    print('Authentication is started')
+    cmd = 'wget --no-check-certificate --keep-session-cookies --save-cookies cookies.txt --post-data \'username=%s&password=%s\' \'https://vision.imar.ro/human3.6m/checklogin.php\'' % (username, password)
+    ret = call(cmd, shell=True)
+
+    # save phpsessid into config.ini
+    f = open('cookies.txt', 'r')
+    dat = f.readlines()
+    sessid = ''
+    for line in dat:
+        tokens = line.split('\t')
+        for i,t in enumerate(tokens):
+            if t == 'PHPSESSID':
+                sessid = tokens[i+1].replace('\n','')
+                break
+    f.close()
+    """
+    if path.exists('config.ini'):
+        f = open('config.ini', 'r')
+        dat = f.readlines()
+        for line in dat:
+            if line.find('PHPSESSID=') != -1:
+                line = 'PHPSESSID='+sessid
+        f.close()
+    else:
+    """
+    dat = '[General]\nPHPSESSID='+sessid
+    
+    dat = ''.join(dat)
+    f = open('config.ini', 'w')
+    f.write(dat)
+    f.close()
+
+    print('dumped PHPSESSID into config.ini')
+
+
+def get_phpsessid():
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    try:
+        phpsessid = config['General']['PHPSESSID']
+    except (KeyError, configparser.NoSectionError):
+        print('Could not read PHPSESSID from `config.ini`.')
+        phpsessid = input('Enter PHPSESSID: ')
+    return phpsessid
+
+
+def verify_phpsessid(phpsessid):
+    requests.packages.urllib3.disable_warnings()
+    test_url = 'http://vision.imar.ro/human3.6m/filebrowser.php'
+    resp = requests.get(test_url, verify=False, cookies=dict(PHPSESSID=phpsessid))
+    fail_message = 'Failed to verify your PHPSESSID. Please ensure that you ' \
+                   'are currently logged in at http://vision.imar.ro/human3.6m/ ' \
+                   'and that you have copied the PHPSESSID cookie correctly.'
+    assert resp.url == test_url, fail_message
+
+
+def download_all(phpsessid):
+    checksums = {}
+    with open('checksums.txt', 'r') as f:
+        for line in f.read().splitlines(keepends=False):
+            v, k = line.split('  ')
+            checksums[k] = v
+
+    files = []
+    for subject_id, id in subjects:
+        files += [
+            ('Segments_mat_gt_bb_{}.tgz'.format(subject_id),
+             'download=1&filepath=Segments/mat_gt_bb&filename=SubjectSpecific_{}.tgz'.format(id)), # bbox
+            ('Segments_mat_gt_pl_{}.tgz'.format(subject_id),
+             'download=1&filepath=Segments/mat_gt_pl&filename=SubjectSpecific_{}.tgz'.format(id)), # part label
+        ]
+
+    out_dir = 'archives'
+    makedirs(out_dir, exist_ok=True)
+
+    for filename, query in tqdm(files, ascii=True):
+        out_file = path.join(out_dir, filename)
+
+        if path.isfile(out_file):
+            checksum = md5(out_file)
+            if checksums.get(out_file, None) == checksum:
+                continue
+
+        download_file(BASE_URL + '?' + query, out_file, phpsessid)
+
+
+if __name__ == '__main__':
+    get_cookie('id', 'pw')
+    phpsessid = get_phpsessid()
+    verify_phpsessid(phpsessid)
+    download_all(phpsessid)

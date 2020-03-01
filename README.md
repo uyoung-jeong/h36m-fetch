@@ -1,4 +1,14 @@
 # Human3.6M dataset fetcher
+This repo adds a new download script `download_seg_mat_gt_pl.py`.
+This script downloads additional segments annotations, and also automatically figures out PHPSESSID.
+The function `get_cookie()` is originally from [Human 3.6M downloader](https://github.com/kotaro-inoue/human3.6m_downloader).
+
+Tips for downloading H36M:
+ * From my experience, human3.6m downloader could not download files completely. I recommend to use h36m fetcher.
+ * You need to install cdf from [official homepage](https://cdf.gsfc.nasa.gov/)
+
+Below texts are the same as the original repo
+
 
 [Human3.6M](http://vision.imar.ro/human3.6m/description.php) is a 3D
 human pose dataset containing 3.6 million human poses and corresponding

@@ -2,12 +2,14 @@
 This repo adds a new download script `download_seg_mat_gt_pl.py`.
 This script downloads additional segments annotations, and also automatically figures out PHPSESSID.
 The function `get_cookie()` is originally from [Human 3.6M downloader](https://github.com/kotaro-inoue/human3.6m_downloader).
+Additionally, `visualize_seg_pl.py` visualizes `seg_mat_gt_pl` for better comprehension.
+`action_to_seg_pl_filename.py` is copied from [learnable triangulation](https://github.com/karfly/learnable-triangulation-pytorch/blob/master/mvn/datasets/human36m_preprocessing/action_to_bbox_filename.py)
 
 Tips for downloading H36M:
  * From my experience, human3.6m downloader could not download files completely. I recommend to use h36m fetcher.
  * You need to install cdf from [official homepage](https://cdf.gsfc.nasa.gov/)
 
-Below texts are the same as the original repo
+Below texts are the same as the original repo.
 
 
 [Human3.6M](http://vision.imar.ro/human3.6m/description.php) is a 3D
